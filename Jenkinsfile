@@ -12,7 +12,7 @@ pipeline {
          pollSCM('* * * * *')
      }
 
-stages{
+ stages{
         stage('Build'){
             steps {
                 bat 'mvn clean package'
@@ -25,18 +25,27 @@ stages{
             }
         }
 
-        stage ('Deployments'){
-            parallel{
-                stage ('Deploy to Staging'){
-                    steps {
-                        bat "winscp.exe /privatekey=C:/Users/kulshree.agrawal/Documents/Jenkins/tomcat-demo.ppk ec2-user@${params.tomcat_dev}:/var/lib/tomcat7/webapps **/target/*.war"
-                    }
+        stage ('Deploy to Staging'){
+            steps {
+                build job: 'deploy-to-staging'
+            }
+        }
+
+        stage ('Deploy to Production'){
+            steps{
+                timeout(time:5, unit:'DAYS'){
+                    input message:'Approve PRODUCTION Deployment?'
                 }
 
-                stage ("Deploy to Production"){
-                    steps {
-                        bat "winscp.exe /privatekey=C:/Users/kulshree.agrawal/Documents/Jenkins/tomcat-demo.ppk ec2-user@${params.tomcat_prod}:/var/lib/tomcat7/webapps **/target/*.war"
-                    }
+                build job: 'deploy-to-prod'
+            }
+            post {
+                success {
+                    echo 'Code deployed to Production.'
+                }
+
+                failure {
+                    echo ' Deployment failed.'
                 }
             }
         }
